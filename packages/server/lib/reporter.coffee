@@ -60,6 +60,7 @@ createRunnable = (obj, parent) ->
   runnable.duration = obj.duration
   runnable.state    = obj.state ? "skipped" ## skipped by default
   runnable.body     ?= body
+  runnable._retries = obj._retries
 
   runnable.parent = parent if parent
 
@@ -68,6 +69,18 @@ createRunnable = (obj, parent) ->
 mergeRunnable = (eventName) ->
   return (testProps, runnables) ->
     runnable = runnables[testProps.id]
+
+    if (testProps._currentRetry > runnable._currentRetry)
+      debug('test retried:', testProps.title)
+      prevAttempts = runnable.prevAttempts || []
+      ## we don't want to mutate the previous attempt
+      prevAttempt = _.clone(runnable)
+      ## add prevAttempt array to newly created runnable
+      testProps.prevAttempts = prevAttempts.concat([prevAttempt])
+
+    if (testProps._currentRetry < runnable._currentRetry)
+      runnable = runnable.prevAttempts[testProps._currentRetry]
+
 
     _.extend(runnable, testProps)
 
@@ -118,6 +131,8 @@ events = {
   "suite":     mergeRunnable("suite")
   "suite end": mergeRunnable("suite end")
   "test":      mergeRunnable("test")
+  ## we don't need to use this event, but we'll pass it along to reporters
+  "retry":     true
   "test end":  mergeRunnable("test end")
   "hook":      safelyMergeRunnable
   "hook end":  safelyMergeRunnable
@@ -226,6 +241,8 @@ class Reporter
       wallClockStartedAt: wcs
       wallClockDuration: get("wallClockDuration")
       videoTimestamp: null ## always start this as null
+      attemptIndex:   get('_currentRetry')
+      prevAttempts: get("prevAttempts")?.map(normalizeTest)
     }
 
   end: ->
@@ -244,6 +261,7 @@ class Reporter
     .chain(@runnables)
     .filter({type: "test"})
     .map(@normalizeTest)
+    # .each(console.log)
     .value()
 
     hooks = _
@@ -271,6 +289,7 @@ class Reporter
     @stats.pending = _.filter(tests, { state: "pending" }).length
     @stats.skipped = _.filter(tests, { state: "skipped" }).length
     @stats.failures = _.filter(tests, { state: "failed" }).length
+    @stats.retried = _.filter(tests, (test) => return test.attemptIndex > 0 && test.state is 'passed')
 
     ## return an object of results
     return {

@@ -19,7 +19,8 @@ exports['e2e spec_isolation failing 1'] = {
         "failures": 3,
         "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
         "wallClockEndedAt": "2018-02-01T20:14:19.323Z",
-        "wallClockDuration": 1234
+        "wallClockDuration": 1234,
+        "retried": []
       },
       "reporter": "spec",
       "reporterStats": {
@@ -83,7 +84,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": "h1",
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         },
         {
           "testId": "r6",
@@ -100,7 +102,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": null,
           "wallClockStartedAt": null,
           "wallClockDuration": null,
-          "videoTimestamp": null
+          "videoTimestamp": null,
+          "attemptIndex": 0
         },
         {
           "testId": "r8",
@@ -130,7 +133,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": "h2",
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         },
         {
           "testId": "r9",
@@ -147,7 +151,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": null,
           "wallClockStartedAt": null,
           "wallClockDuration": null,
-          "videoTimestamp": null
+          "videoTimestamp": null,
+          "attemptIndex": 0
         },
         {
           "testId": "r11",
@@ -170,7 +175,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": null,
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         },
         {
           "testId": "r12",
@@ -200,7 +206,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": "h3",
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         }
       ],
       "error": null,
@@ -251,7 +258,8 @@ exports['e2e spec_isolation failing 1'] = {
         "failures": 2,
         "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
         "wallClockEndedAt": "2018-02-01T20:14:19.323Z",
-        "wallClockDuration": 1234
+        "wallClockDuration": 1234,
+        "retried": []
       },
       "reporter": "spec",
       "reporterStats": {
@@ -286,7 +294,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": null,
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         },
         {
           "testId": "r4",
@@ -308,7 +317,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": null,
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         }
       ],
       "error": null,
@@ -350,7 +360,8 @@ exports['e2e spec_isolation failing 1'] = {
         "failures": 0,
         "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
         "wallClockEndedAt": "2018-02-01T20:14:19.323Z",
-        "wallClockDuration": 1234
+        "wallClockDuration": 1234,
+        "retried": []
       },
       "reporter": "spec",
       "reporterStats": {
@@ -439,7 +450,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": null,
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         },
         {
           "testId": "r4",
@@ -475,7 +487,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": null,
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         },
         {
           "testId": "r5",
@@ -518,7 +531,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": null,
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         }
       ],
       "error": null,
@@ -541,7 +555,8 @@ exports['e2e spec_isolation failing 1'] = {
         "failures": 0,
         "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
         "wallClockEndedAt": "2018-02-01T20:14:19.323Z",
-        "wallClockDuration": 1234
+        "wallClockDuration": 1234,
+        "retried": []
       },
       "reporter": "spec",
       "reporterStats": {
@@ -592,7 +607,8 @@ exports['e2e spec_isolation failing 1'] = {
           "failedFromHookId": null,
           "wallClockStartedAt": "2018-02-01T20:14:19.323Z",
           "wallClockDuration": 1234,
-          "videoTimestamp": 9999
+          "videoTimestamp": 9999,
+          "attemptIndex": 0
         }
       ],
       "error": null,

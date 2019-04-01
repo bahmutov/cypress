@@ -3,6 +3,8 @@ const path = require('path')
 const fs = require('fs-extra')
 const Promise = require('bluebird')
 
+const state = {}
+
 module.exports = (on) => {
   on('task', {
     'return:arg' (arg) {
@@ -18,6 +20,17 @@ module.exports = (on) => {
       }).join('\n\n')
 
       fs.outputFileSync(filePath, longText)
+
+      return null
+    },
+
+    state ([key, value]) {
+      if (value === undefined) {
+        return state[key]
+      }
+
+      state[key] = value
+
       return null
     },
   })

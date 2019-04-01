@@ -2,6 +2,9 @@
   "plugins": [
     "cypress"
   ],
+  "parserOptions": {
+    "ecmaVersion": 8
+  },
   "env": {
     "cypress/globals": true
   }
