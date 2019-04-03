@@ -3,9 +3,12 @@
     "cypress"
   ],
   "parserOptions": {
-    "ecmaVersion": 8
+    "ecmaVersion": 2018
   },
   "env": {
     "cypress/globals": true
+  },
+  "ecmaFeatures": {
+    "experimentalObjectRestSpread": true
   }
 }

@@ -245,6 +245,13 @@ class $Cypress
         if @config("isTextTerminal")
           @emit("mocha", "pass", args...)
 
+      ## retry event only fired in mocha version 6+
+      ## https://github.com/mochajs/mocha/commit/2a76dd7589e4a1ed14dd2a33ab89f182e4c4a050
+      # when "runner:retry"
+      #   ## mocha runner calculated a pass
+      #   if @config("isTextTerminal")
+      #     @emit("mocha", "retry", args...)
+
       when "runner:pending"
         ## mocha runner calculated a pending test
         if @config("isTextTerminal")

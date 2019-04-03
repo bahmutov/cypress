@@ -4,6 +4,7 @@ const $utils = require('./utils')
 //# as window
 const mocha = require('mocha')
 
+/** @type {typeof mocha} */
 const Mocha = mocha.Mocha != null ? mocha.Mocha : mocha
 const { Test } = Mocha
 const { Runner } = Mocha

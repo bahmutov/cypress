@@ -61,6 +61,8 @@ createRunnable = (obj, parent) ->
   runnable.state    = obj.state ? "skipped" ## skipped by default
   runnable.body     ?= body
   runnable._retries = obj._retries
+  ## shouldn't need to set _currentRetry, but we'll do it anyways
+  runnable._currentRetry = obj._currentRetry
 
   runnable.parent = parent if parent
 
@@ -86,6 +88,8 @@ mergeRunnable = (eventName) ->
 
 safelyMergeRunnable = (hookProps, runnables) ->
   { hookId, title, hookName, body, type } = hookProps
+
+  debug('safelyMergeRunnable')
 
   if not runnable = runnables[hookId]
     runnables[hookId] = {
@@ -132,7 +136,8 @@ events = {
   "suite end": mergeRunnable("suite end")
   "test":      mergeRunnable("test")
   ## we don't need to use this event, but we'll pass it along to reporters
-  "retry":     true
+  ## retry event only fired in mocha 6+
+  # "retry":     true
   "test end":  mergeRunnable("test end")
   "hook":      safelyMergeRunnable
   "hook end":  safelyMergeRunnable
@@ -192,13 +197,15 @@ class Reporter
 
   emit: (event, args...) ->
     if args = @parseArgs(event, args)
-      @runner?.emit.apply(@runner, args)
+      ret = @runner?.emit.apply(@runner, args)
+      debug('emit', event, args)
+      ret
 
   parseArgs: (event, args) ->
+    debug("got mocha event '%s' with args: %o", event, args)
     ## make sure this event is in our events hash
     if e = events[event]
       if _.isFunction(e)
-        debug("got mocha event '%s' with args: %o", event, args)
         ## transform the arguments if
         ## there is an event.fn callback
         args = e.apply(@, args.concat(@runnables, @stats))
@@ -289,7 +296,6 @@ class Reporter
     @stats.pending = _.filter(tests, { state: "pending" }).length
     @stats.skipped = _.filter(tests, { state: "skipped" }).length
     @stats.failures = _.filter(tests, { state: "failed" }).length
-    @stats.retried = _.filter(tests, (test) => return test.attemptIndex > 0 && test.state is 'passed')
 
     ## return an object of results
     return {

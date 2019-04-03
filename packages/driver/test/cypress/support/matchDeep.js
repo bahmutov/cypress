@@ -1,6 +1,118 @@
-const { _ } = Cypress
-const { match } = Cypress.sinon
+let _ = require('lodash')
+let { match } = require('sinon')
+let $ = require('jquery')
 const jestDiff = require('jest-diff')
+const debug = require('debug')('plugin:snapshot')
+
+// window.localStorage.debug = 'spec* plugin:snapshot'
+
+const registerInCypress = () => {
+  _ = Cypress._
+  $ = Cypress.$
+  match = Cypress.sinon.match
+
+  const matchDeepCypress = function (...args) {
+    matchDeep.apply(this, [...args, { Cypress }])
+  }
+
+  const matchSnapshotCypress = function (m, snapshotName) {
+    const ctx = this
+    const specName = Cypress.mocha.getRunner().test.fullTitle()
+    const file = Cypress.spec.name
+    const exactSpecName = snapshotName
+
+    cy.task('getSnapshot', {
+      file,
+      specName,
+      exactSpecName,
+    }, { log: false }).then((exp) => {
+      try {
+        matchDeep.bind(ctx)(m, exp, { message: 'to match snapshot', Cypress })
+      } catch (e) {
+        if (Cypress.env('SNAPSHOT_UPDATE')) {
+          return e.act
+        }
+
+        throw e
+      }
+
+    })
+    .then((act) => {
+      cy.task('saveSnapshot', {
+        file,
+        specName,
+        exactSpecName,
+        what: act,
+      }, { log: false })
+
+    })
+  }
+
+  chai.Assertion.addMethod('matchDeep', matchDeepCypress)
+  chai.Assertion.addMethod('matchSnapshot', matchSnapshotCypress)
+
+  window.lastActual = 'none'
+
+  before(() => {
+
+    addButton('snapshot-copy-btn', 'fa-copy', () => {
+    // eslint-disable-next-line
+    console.log('%cCopied to clipboard', 'color:grey')
+      // debug(window.lastActual)
+      copyToClipboard(stringify(window.lastActual))
+    })
+
+    const btn = addButton('toggle-snapshot-update', 'fa-camera', () => {
+      const prev = Cypress.env('SNAPSHOT_UPDATE')
+
+      Cypress.env('SNAPSHOT_UPDATE', !prev)
+
+      updateText()
+    })
+
+    const btnIcon = btn.children().first()
+
+    const updateText = () => {
+      return btnIcon.text(Cypress.env('SNAPSHOT_UPDATE') ? 'snapshot\nupdate\non' : 'snapshot\nupdate\noff')
+      .css({ 'font-size': '10px', 'line-height': '0.9' })
+      .html(btnIcon.html().replace(/\n/g, '<br/>'))
+    }
+
+    updateText()
+
+  })
+
+  after(() => {
+    cy.task('snapshotRestore', null, { log: false })
+  })
+
+  function copyToClipboard (text) {
+    let el = document.createElement('textarea')
+
+    document.body.appendChild(el)
+    el.value = text
+    el.select()
+    document.execCommand('copy')
+    document.body.removeChild(el)
+  }
+
+  const addButton = (name, faClass, fn) => {
+    $(`#${name}`, window.top.document).remove()
+
+    const btn = $(`<span id="${name}"><button><i class="fa ${faClass}"></i></button></span>`, window.top.document)
+    const container = $(
+      '.toggle-auto-scrolling.auto-scrolling-enabled',
+      window.top.document
+    ).closest('.controls')
+
+    container.prepend(btn)
+
+    btn.on('click', fn)
+
+    return btn
+  }
+
+}
 
 const getDiffString = (exp, act) => {
   return jestDiff(exp, act, { callToJSON: true })
@@ -8,12 +120,31 @@ const getDiffString = (exp, act) => {
   .replace(/Object \{/g, '{')
 }
 
-const getReplacementFor = (path, opts) => {
+const getReplacementFor = (path = [], m) => {
   let found
 
-  _.each(opts, (val) => {
-    const matched = (_.last(path) === _.last(val[0]))
-       && _.isEqual(_.intersection(path, val[0]), val[0])
+  path = _.cloneDeep(path)
+
+  _.each(m, (val) => {
+
+    // debug(val[0].join('.'))
+
+    const wildCards = _.keys(_.pickBy(val[0], (value) => {
+      return value === '*'
+    }))
+
+    path = _.map(path, (value, key) => {
+      if (_.includes(wildCards, `${key}`)) {
+        return '*'
+      }
+
+      return value
+    })
+
+    const matched = path.join('.').endsWith(val[0].join('.'))
+
+    // (_.last(path) === _.last(val[0]))
+    //    && _.isEqual(_.intersection(path, val[0]), val[0])
 
     if (matched) {
       found = val[1]
@@ -23,23 +154,34 @@ const getReplacementFor = (path, opts) => {
   return found
 }
 
-chai.Assertion.addMethod('matchDeep', function (opts, exp) {
+const matchDeep = function (matchers, exp, opts = {}) {
+  let m = matchers
+
   if (exp === undefined) {
-    exp = opts
-    opts = {}
+    exp = m
+    m = {}
   }
 
-  const shouldCleanse = opts.shouldCleanse
-
-  // console.log('shouldcleanse?', shouldCleanse)
-
-  opts = _.omit(opts, 'shouldCleanse')
-
-  opts = _.map(opts, (val, key) => {
-    return [key.split('.'), val]
+  opts = _.defaults(opts, {
+    message: 'to match',
+    Cypress: false,
+    setGlobalSnapshot: (val) => {
+      return window.lastActual = val
+    },
+    diff: true,
   })
 
+  if (!opts.chai) {
+    opts.chai = window.chai
+  }
+
+  const chai = opts.chai
+
   const act = this._obj
+
+  m = _.map(m, (val, key) => {
+    return [key.split('.'), val]
+  })
 
   const getType = (obj) => {
     return Object.prototype.toString.call(obj).split('[object ').join('').slice(0, -1)
@@ -69,24 +211,28 @@ chai.Assertion.addMethod('matchDeep', function (opts, exp) {
     return ret
   }
 
-  // const replaceVals = (obj, opts) => {
-  // console.log('try replace:', obj)
-  //   _.each(opts, (val, key) => {
-  //     if (_.has(obj, key)) {
-  //       let setFn = _.identity
+  const isMatcher = (obj) => {
+    if (match.isMatcher(obj)) {
+      return obj
+    }
 
-  //       if (_.isFunction(val)) {
-  //         setFn = val
-  //       }
+    let parseObj = (_.isString(obj) && obj) || (obj && obj.toJSON && obj.toJSON())
 
-  // console.log('set val:', key, val)
+    if (parseObj) {
+      const parsed = /match\.(.*)/.exec(parseObj)
 
-  //       return _.set(obj, key, setFn(val))
-  //     }
-  //   })
+      if (parsed) {
+        // debug('parsed matcher from string:', parsed[1])
 
-  //   return obj
-  // }
+        return match[parsed[1]]
+
+      }
+
+      return obj
+    }
+
+    return obj
+  }
 
   const errs = []
 
@@ -98,23 +244,11 @@ chai.Assertion.addMethod('matchDeep', function (opts, exp) {
 
       const newPath = _path.concat([key])
 
-      // if (_.includes(newPath, 'err')) {
-      //   debugger
-      // }
-
-      if (_path.length > 8) {
+      if (_path.length > 15) {
         throw new Error(`objects exceed maximum diff depth
-        last paths: ${formatPath(newPath)}
-        `)
+          last paths: ${formatPath(newPath)}
+          `)
       }
-
-      // console.log(newPath)
-
-      // if (errs.length > 20) {
-      //   noDiff = true
-
-      //   return
-      // }
 
       const setValue = (obj, key, val) => {
         if (_.isObjectLike(obj) && _.hasIn(obj, key)) {
@@ -131,23 +265,54 @@ chai.Assertion.addMethod('matchDeep', function (opts, exp) {
         }
       }
 
-      let _actValue = _.get(_act, key)
-      let _expValue = _.get(_exp, key)
+      const testValue = (matcher, value) => {
 
-      const replacementVal = getReplacementFor(newPath, opts)
-
-      // if (newPath.includes('attempts')) console.log(newPath)
-
-      if (replacementVal) {
-        // console.log(newPath, opts, replacementVal)
-
-        if (shouldCleanse) {
-          setValue(_exp, key, replacementVal)
-          _expValue = _.get(_exp, key)
+        if (match.isMatcher(value)) {
+          if (value.toString() === matcher.toString()) {
+            return matcher.toString()
+          }
         }
 
-        setValue(_act, key, replacementVal)
-        _actValue = _.get(_act, key)
+        if (matcher.test(value)) {
+          return matcher.toString()
+        }
+
+        errs.push(new Error(`replace matcher failed: ${genError(newPath, matcher.toString(), value)}`))
+
+        return false
+      }
+
+      let _actValue = _.get(_act, key)
+      let _expValue = _.get(_exp, key)
+      let passed = true
+
+      // debug('compare:', _actValue, _expValue)
+
+      _expValue = isMatcher(_expValue)
+      _actValue = isMatcher(_actValue)
+
+      const replacementVal = getReplacementFor(newPath, m)
+
+      if (newPath.includes('attempts')) debug(newPath)
+
+      if (replacementVal) {
+        debug(newPath, m, replacementVal)
+
+        // if (shouldCleanse) {
+        //   setValue(_exp, key, replacementVal)
+        //   _expValue = _.get(_exp, key)
+        // }
+
+        if (match.isMatcher(replacementVal)) {
+          passed = !!testValue(replacementVal, _actValue)
+          // debug('passed?', !!passed)
+        }
+
+        if (passed) {
+          setValue(_act, key, replacementVal)
+          _actValue = _.get(_act, key)
+        }
+
       }
 
       if (_expValue && _expValue.toJSON && !match.isMatcher(_expValue)) {
@@ -160,21 +325,12 @@ chai.Assertion.addMethod('matchDeep', function (opts, exp) {
         _actValue = _.get(_act, key)
       }
 
-      // const replacementKey = getReplacementFor(newPath, opts)
-
-      // if (replacementKey !== undefined) {
-      //   _actValue = replacementKey
-      //   _act[key] = replacementKey
-
       if (match.isMatcher(_actValue)) {
         setValue(_act, key, matcherStringToObj(_actValue.message))
-        // _act[key] = matcherStringToObj(_actValue.message)
       }
-      // }
 
       if (match.isMatcher(_expValue)) {
         setValue(_exp, key, matcherStringToObj(_expValue.message))
-        // _exp[key] = matcherStringToObj(_expValue.message)
       }
 
       if (match.isMatcher(_actValue)) {
@@ -195,13 +351,9 @@ chai.Assertion.addMethod('matchDeep', function (opts, exp) {
       }
 
       if (match.isMatcher(_expValue)) {
-        if (_expValue.test(_actValue)) {
-          return _expValue.toString()
-        }
+        passed = testValue(_expValue, _actValue)
 
-        errs.push(new Error(`matcher failed: ${genError(newPath, _expValue.toString(), _actValue)}`))
-
-        return
+        return passed
       }
 
       if (getType(_expValue) === 'Error') {
@@ -244,9 +396,11 @@ chai.Assertion.addMethod('matchDeep', function (opts, exp) {
 
   recurse(exp, act, ['^'])
 
+  const displayMessage = `expected **${chai.util.objDisplay(exp)}** ${opts.message} **${chai.util.objDisplay(act)}**`
+
   if (errs.length) {
 
-    const omitIndividualErrors = errs.length > 4
+    const omitIndividualErrors = errs.length > 5
 
     let message = ''
 
@@ -256,20 +410,51 @@ chai.Assertion.addMethod('matchDeep', function (opts, exp) {
       message += errStrings
     }
 
-    if (!noDiff) {
-      message += `\n\n${getDiffString(exp, act)}`
+    if (!noDiff && opts.diff) {
+      try {
+        message += `\n\n${getDiffString(exp, act)}`
+      } catch (e) {
+        message += e.message
+      }
     }
 
-    window.lastActual = act
+    opts.setGlobalSnapshot(act)
 
-    this.assert(false, message)
-    // throw errToThrow
+    const errToThrow = new Error()
+
+    errToThrow.message = message
+    errToThrow.act = act
+
+    if (opts.Cypress) {
+
+      opts.Cypress.log({
+        name: 'assert',
+        message: displayMessage,
+        state: 'failed',
+        // error: errToThrow,
+        consoleProps: () => {
+          return {
+            Expected: exp,
+            Actual: act,
+          }
+        },
+      })
+    }
+
+    // try {
+    //   this.assert(false, message)
+    // } catch (errToThrow)
+    //  {
+
+    throw errToThrow
+    // }
 
   }
 
-  this.assert(true, `expected **${chai.util.objDisplay(exp)}** to match **${chai.util.objDisplay(act)}**`)
+  this.assert(true, displayMessage)
 
-})
+}
+
 // const MATCHER_STR = '[MATCHES] '
 
 const stringify = (obj_from_json, ind = 0) => {
@@ -360,5 +545,7 @@ const stringify = (obj_from_json, ind = 0) => {
 
 module.exports = {
   stringify,
+  registerInCypress,
+  matchDeep,
 
 }

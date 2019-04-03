@@ -775,12 +775,16 @@ const _runnerListeners = function (_runner, Cypress, _emissions, getTestById, ge
     return Cypress.action('runner:test:end', wrap(test))
   })
 
-  _runner.on('retry', (test, err) => {
+  /**
+   * Mocha retry event is only fired in Mocha version 6+
+   * https://github.com/mochajs/mocha/commit/2a76dd7589e4a1ed14dd2a33ab89f182e4c4a050
+   */
+  // _runner.on('retry', (test, err) => {
 
-    test.err = wrapErr(err)
+  //   test.err = wrapErr(err)
 
-    return Cypress.action('runner:retry', wrap(test), test.err)
-  })
+  //   return Cypress.action('runner:retry', wrap(test), test.err)
+  // })
 
   _runner.on('pass', (test) => {
     return Cypress.action('runner:pass', wrap(test))
@@ -1384,7 +1388,7 @@ const create = function (specWindow, mocha, Cypress, cy) {
 
           const test = serializeTest(testRunnable)
 
-          test.prevAttempts = testRunnable.prevAttempts.map(serializeTest)
+          test.prevAttempts = _.map(testRunnable.prevAttempts, serializeTest)
           // const attempts = getAllAttemptsFromTest(test)
           // const wrappedAttemps = _.map(attempts, wrapAll)
 
